@@ -40,10 +40,23 @@ var printFileName filepath.WalkFunc = func(path string, info os.FileInfo, err er
 }
 
 func main() {
-	// Read in backup settings from configuration file
 	viper.AddConfigPath(".")
 	viper.SetConfigFile(".backmeup.yml")
 	err := viper.ReadInConfig()
+
+	args := os.Args
+	fmt.Println(args)
+	if len(args) > 1 {
+		switch args[1] {
+		case "loc":
+			setLoc(args)
+		default:
+			fmt.Println(args[1], " is not a command")
+		}
+	}
+	//temporarily return for testing configuration commands
+	return
+	// Read in backup settings from configuration file
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -56,6 +69,16 @@ func main() {
 			fmt.Printf("Error walking path: %v \n", err)
 			return
 		}
+	}
+}
+
+func setLoc(args []string) {
+	if len(args) > 2 {
+		viper.Set("loc", args[2])
+		viper.WriteConfig()
+		fmt.Println(viper.Get("loc"))
+	} else {
+		fmt.Println("Usage: backmeup loc <backup path>")
 	}
 }
 
