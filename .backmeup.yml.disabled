@@ -1,0 +1,6 @@
+loc: E:\backup_folder
+dir:
+  - C:\Users\You\back_this_up
+  - C:\Users\Documents\back_this_up_too
+exclude:
+  - C:\Users\Documents\back_this_up_too\dont_back_this_up
