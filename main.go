@@ -50,6 +50,12 @@ func main() {
 		switch args[1] {
 		case "loc":
 			setLoc(args)
+		case "dir":
+			dir(args)
+		case "exclude":
+			exclude(args)
+		case "config":
+			showConfig()
 		default:
 			fmt.Println(args[1], " is not a command")
 		}
@@ -79,6 +85,74 @@ func setLoc(args []string) {
 		fmt.Println(viper.Get("loc"))
 	} else {
 		fmt.Println("Usage: backmeup loc <backup path>")
+	}
+}
+
+func dir(args []string) {
+	if len(args) > 2 {
+		switch args[2] {
+		case "add":
+			addDir(args)
+		default:
+			fmt.Println(args[2], " is not a command.")
+		}
+	} else {
+		fmt.Println("Usage: backmeup dir <command>")
+		fmt.Println("Commands:")
+		fmt.Println("\t", "add: add directory to list of backed up directories")
+		fmt.Println("\t", "rm: remove a directory from the list of backed up directories")
+	}
+}
+
+func exclude(args []string) {
+	if len(args) > 2 {
+		switch args[2] {
+		case "add":
+			addExclusion(args)
+		default:
+			fmt.Println(args[2], " is not a command.")
+		}
+	} else {
+		fmt.Println("Usage: backmeup exclude <command>")
+		fmt.Println("Commands:")
+		fmt.Println("\t", "add: add directory to list of excluded directories")
+		fmt.Println("\t", "rm: remove a directory from the list of excluded directories")
+	}
+
+}
+
+func addDir(args []string) {
+	if len(args) > 3 {
+		directories := append(viper.GetStringSlice("dir"), args[3:]...)
+		viper.Set("dir", directories)
+		viper.WriteConfig()
+		fmt.Println("Adding Dir ", viper.Get("dir"))
+	} else {
+		fmt.Println("Usage: backmeup dir add <path>")
+	}
+}
+
+func addExclusion(args []string) {
+	if len(args) > 3 {
+		exclusions := append(viper.GetStringSlice("exclude"), args[3:]...)
+		viper.Set("exclude", exclusions)
+		viper.WriteConfig()
+		fmt.Println("Adding Exclusion", viper.Get("exclude"))
+	} else {
+		fmt.Println("Usage: backmeup exclude add <path>")
+	}
+}
+
+func showConfig() {
+	fmt.Println("Backup Location:")
+	fmt.Println("\t", viper.Get("loc"))
+	fmt.Println("Backed up directories:")
+	for _, item := range viper.GetStringSlice("dir") {
+		fmt.Println("\t", item)
+	}
+	fmt.Println("Excluded directories:")
+	for _, item := range viper.GetStringSlice("exclude") {
+		fmt.Println("\t", item)
 	}
 }
 
