@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,7 @@ type config struct {
 }
 
 var configuration config
+var verbose *bool
 var printFileName filepath.WalkFunc = func(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		fmt.Println(err)
@@ -24,11 +26,15 @@ var printFileName filepath.WalkFunc = func(path string, info os.FileInfo, err er
 	// Skip any excluded directories in the config
 	for i := 0; i < len(configuration.Exclude); i++ {
 		if info.IsDir() && path == configuration.Exclude[i] {
-			fmt.Println("Skipped " + info.Name())
+			if *verbose {
+				fmt.Println("Skipped " + info.Name())
+			}
 			return filepath.SkipDir
 		}
 	}
-	fmt.Println("Visited: " + path)
+	if *verbose {
+		fmt.Println("Backing up: " + path)
+	}
 	if !info.IsDir() {
 		_, err = copyfile(path)
 		if err != nil {
@@ -49,10 +55,12 @@ func main() {
 	}
 	viper.Unmarshal(&configuration)
 
-	args := os.Args
+	verbose = flag.Bool("v", false, "Give verbose output")
+	flag.Parse()
+	args := flag.Args()
 	// Check for and execute configuration commands, otherwise execute the backup
-	if len(args) > 1 {
-		switch args[1] {
+	if len(args) > 0 {
+		switch args[0] {
 		case "loc":
 			setLoc(args)
 		case "dir":
@@ -62,7 +70,7 @@ func main() {
 		case "config":
 			showConfig()
 		default:
-			fmt.Println(args[1], " is not a command")
+			fmt.Println(args[0], " is not a command")
 		}
 	} else {
 		// Loop over directories and back them up
@@ -77,8 +85,8 @@ func main() {
 }
 
 func setLoc(args []string) {
-	if len(args) > 2 {
-		viper.Set("loc", args[2])
+	if len(args) > 1 {
+		viper.Set("loc", args[1])
 		viper.WriteConfig()
 		fmt.Println(viper.Get("loc"))
 	} else {
@@ -87,14 +95,14 @@ func setLoc(args []string) {
 }
 
 func dir(args []string) {
-	if len(args) > 2 {
-		switch args[2] {
+	if len(args) > 1 {
+		switch args[1] {
 		case "add":
 			addDir(args)
 		case "rm":
 			removeDir(args)
 		default:
-			fmt.Println(args[2], " is not a command.")
+			fmt.Println(args[1], " is not a command.")
 		}
 	} else {
 		fmt.Println("Usage: backmeup dir <command>")
@@ -105,14 +113,14 @@ func dir(args []string) {
 }
 
 func exclude(args []string) {
-	if len(args) > 2 {
-		switch args[2] {
+	if len(args) > 1 {
+		switch args[1] {
 		case "add":
 			addExclusion(args)
 		case "rm":
 			removeExclusion(args)
 		default:
-			fmt.Println(args[2], " is not a command.")
+			fmt.Println(args[1], " is not a command.")
 		}
 	} else {
 		fmt.Println("Usage: backmeup exclude <command>")
@@ -124,8 +132,8 @@ func exclude(args []string) {
 }
 
 func addDir(args []string) {
-	if len(args) > 3 {
-		directories := append(viper.GetStringSlice("dir"), args[3:]...)
+	if len(args) > 2 {
+		directories := append(viper.GetStringSlice("dir"), args[2:]...)
 		viper.Set("dir", directories)
 		viper.WriteConfig()
 		fmt.Println("Adding Dir ", viper.Get("dir"))
@@ -135,11 +143,11 @@ func addDir(args []string) {
 }
 
 func removeDir(args []string) {
-	if len(args) > 3 {
+	if len(args) > 2 {
 		var directories []string
 		removed := false
 		for _, item := range viper.GetStringSlice("dir") {
-			if item != args[3] {
+			if item != args[2] {
 				directories = append(directories, item)
 			} else {
 				removed = true
@@ -148,7 +156,7 @@ func removeDir(args []string) {
 		viper.Set("dir", directories)
 		viper.WriteConfig()
 		if !removed {
-			fmt.Println(args[3], "not removed, not in directory list")
+			fmt.Println(args[2], "not removed, not in directory list")
 		}
 	} else {
 		fmt.Println("Usage: backmeup dir rm <path>")
@@ -156,8 +164,8 @@ func removeDir(args []string) {
 }
 
 func addExclusion(args []string) {
-	if len(args) > 3 {
-		exclusions := append(viper.GetStringSlice("exclude"), args[3:]...)
+	if len(args) > 2 {
+		exclusions := append(viper.GetStringSlice("exclude"), args[2:]...)
 		viper.Set("exclude", exclusions)
 		viper.WriteConfig()
 		fmt.Println("Adding Exclusion", viper.Get("exclude"))
@@ -167,11 +175,11 @@ func addExclusion(args []string) {
 }
 
 func removeExclusion(args []string) {
-	if len(args) > 3 {
+	if len(args) > 2 {
 		var exclusions []string
 		removed := false
 		for _, item := range viper.GetStringSlice("exclude") {
-			if item != args[3] {
+			if item != args[2] {
 				exclusions = append(exclusions, item)
 			} else {
 				removed = true
@@ -180,7 +188,7 @@ func removeExclusion(args []string) {
 		viper.Set("exclude", exclusions)
 		viper.WriteConfig()
 		if !removed {
-			fmt.Println(args[3], "not removed, not in exclusion list")
+			fmt.Println(args[2], "not removed, not in exclusion list")
 		}
 	} else {
 		fmt.Println("Usage: backmeup exclude rm <path>")
@@ -209,10 +217,8 @@ func copyfile(src string) (int64, error) {
 	if err != nil {
 		return bytes, err
 	}
-	fmt.Println("Relative path: " + rel)
 	// build the destination path from config loc property and relative path
 	dest := filepath.Join(configuration.Loc, rel)
-	fmt.Println("Destination: " + dest)
 	// check that the file exists and is a regular file
 	srcStat, err := os.Stat(src)
 	if err != nil {
