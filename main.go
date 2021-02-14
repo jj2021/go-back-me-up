@@ -93,6 +93,8 @@ func dir(args []string) {
 		switch args[2] {
 		case "add":
 			addDir(args)
+		case "rm":
+			removeDir(args)
 		default:
 			fmt.Println(args[2], " is not a command.")
 		}
@@ -109,6 +111,8 @@ func exclude(args []string) {
 		switch args[2] {
 		case "add":
 			addExclusion(args)
+		case "rm":
+			removeExclusion(args)
 		default:
 			fmt.Println(args[2], " is not a command.")
 		}
@@ -132,6 +136,27 @@ func addDir(args []string) {
 	}
 }
 
+func removeDir(args []string) {
+	if len(args) > 3 {
+		var directories []string
+		removed := false
+		for _, item := range viper.GetStringSlice("dir") {
+			if item != args[3] {
+				directories = append(directories, item)
+			} else {
+				removed = true
+			}
+		}
+		viper.Set("dir", directories)
+		viper.WriteConfig()
+		if !removed {
+			fmt.Println(args[3], "not removed, not in directory list")
+		}
+	} else {
+		fmt.Println("Usage: backmeup dir rm <path>")
+	}
+}
+
 func addExclusion(args []string) {
 	if len(args) > 3 {
 		exclusions := append(viper.GetStringSlice("exclude"), args[3:]...)
@@ -141,6 +166,28 @@ func addExclusion(args []string) {
 	} else {
 		fmt.Println("Usage: backmeup exclude add <path>")
 	}
+}
+
+func removeExclusion(args []string) {
+	if len(args) > 3 {
+		var exclusions []string
+		removed := false
+		for _, item := range viper.GetStringSlice("exclude") {
+			if item != args[3] {
+				exclusions = append(exclusions, item)
+			} else {
+				removed = true
+			}
+		}
+		viper.Set("exclude", exclusions)
+		viper.WriteConfig()
+		if !removed {
+			fmt.Println(args[3], "not removed, not in exclusion list")
+		}
+	} else {
+		fmt.Println("Usage: backmeup exclude rm <path>")
+	}
+
 }
 
 func showConfig() {
