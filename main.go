@@ -212,8 +212,10 @@ func showConfig() {
 func copyfile(src string) (int64, error) {
 	var err error
 	var bytes int64
-	// Get relative path from C: drive
-	rel, err := filepath.Rel("C:\\", src)
+	// Get relative path from drive (for windows devices)
+	drive := filepath.VolumeName(src)
+	//rel, err := filepath.Rel("C:\\", src)
+	rel, err := filepath.Rel(drive+"\\", src)
 	if err != nil {
 		return bytes, err
 	}
