@@ -18,6 +18,8 @@ type config struct {
 
 var configuration config
 var verbose *bool
+var preserve *bool
+
 var printFileName filepath.WalkFunc = func(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		fmt.Println(err)
@@ -56,6 +58,7 @@ func main() {
 	viper.Unmarshal(&configuration)
 
 	verbose = flag.Bool("v", false, "Give verbose output")
+	preserve = flag.Bool("p", false, "Preserve file attributes")
 	flag.Parse()
 	args := flag.Args()
 	// Check for and execute configuration commands, otherwise execute the backup
@@ -69,6 +72,8 @@ func main() {
 			exclude(args)
 		case "config":
 			showConfig()
+		case "restore":
+			fmt.Println("Restore not yet implemented")
 		default:
 			fmt.Println(args[0], " is not a command")
 		}
@@ -250,9 +255,25 @@ func copyfile(src string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer destination.Close()
 
 	bytes, err = io.Copy(destination, source)
+
+	// close file before operating on file attributes
+	// (if deferred, the chtimes function will not behave as expected)
+	destination.Close()
+
+	// copy file attributes if specified
+	if *preserve {
+		err := os.Chtimes(destination.Name(), srcStat.ModTime(), srcStat.ModTime())
+		if err != nil {
+			fmt.Printf("Error preserving time info for %s: %v\n", source.Name(), err.Error())
+		}
+
+		err = os.Chmod(destination.Name(), srcStat.Mode())
+		if err != nil {
+			fmt.Printf("Error preserving file mode for %s: %v\n", source.Name(), err.Error())
+		}
+	}
 
 	return bytes, err
 }
